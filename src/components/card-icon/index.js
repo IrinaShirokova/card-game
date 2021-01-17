@@ -18,7 +18,7 @@ import NotificationsIcon from '@material-ui/icons/Notifications';
 import PetsIcon from '@material-ui/icons/Pets';
 import RestaurantIcon from '@material-ui/icons/Restaurant';
 
-export const ICONS_MAP = {
+const ICONS_MAP = {
     1: AdbIcon,
     2: AirplanemodeActiveIcon,
     3: BeachAccessIcon,
@@ -39,9 +39,31 @@ export const ICONS_MAP = {
     18: RestaurantIcon
 }
 
+const COLORS_MAP = {
+    1: "#C71585",
+    2 : "#228B22",
+    3 : "#FFFF00",
+    4 : "#778899",
+    5 : "#A0522D",
+    6 : "#0000CD",
+    7 : "#BDB76B",
+    8 : "#00CED1",
+    9 : "#FF8C00",
+    10 : "#9400D3",
+    11 : "#00FF7F",
+    12 : "#FF0000",
+    13 : "#ADFF2F",
+    14 : "#DDA0DD",
+    15 : "#FA8072",
+    16 : "#FF8C00",
+    17 : "#6495ED",
+    18 : "#2F4F4F"
+};
+
 export const CardIcon = ({iconId}) => {
     const CardIcon = ICONS_MAP[iconId];
-    return <CardIcon style={{ fontSize: 64 }}/>;
+    const cardColor = COLORS_MAP[iconId];
+    return <CardIcon style={{ fontSize: 64, marginTop: "5px", color: cardColor }}/>;
 };
 
 export default CardIcon;
