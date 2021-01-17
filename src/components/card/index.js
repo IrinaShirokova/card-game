@@ -5,9 +5,10 @@ import CardIcon from '../card-icon';
 
 const useStyles = makeStyles((theme) => ({
     root: {
-        minWidth: "100px",
-        height: theme.spacing(12),
+        minWidth: "80px",
+        height: "80px",
         textAlign: "center",
+        verticalAlign: "middle",
         cursor: "pointer"
     }
   }));

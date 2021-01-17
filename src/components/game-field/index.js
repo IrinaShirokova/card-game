@@ -1,11 +1,10 @@
 import React, {useEffect, useCallback, useState} from 'react';
 import { makeStyles } from '@material-ui/core/styles';
 import Grid from '@material-ui/core/Grid';
-import Typography from '@material-ui/core/Typography';
-import Button from '@material-ui/core/Button';
-import Card from "../card";
-import EmptyCell from "../empty-cell";
+import CardGrid from '../card-grid';
 import gamedata from "../../api/game-data";
+import LeftControlPanel from '../control-panel';
+import Congradulations from '../congradulations';
 
 const useStyles = makeStyles((theme) => ({
     root: {
@@ -21,19 +20,22 @@ const useStyles = makeStyles((theme) => ({
     const [secondCardOpen, setSecondCardOpen] = useState(null);
     const [currentHideCard, setCurrentHideCard] = useState(-1);
     const [gameOver, setGameOver] = useState(false);
-    const [timer, setTimer] = useState(null);
+    const [intervalGame, setIntervalGame] = useState(null);
     const [seconds, setSeconds] = useState(0);
+    const [timer, setTimer] = useState(null);
+    const [timerPair, setTimerPair] = useState(null);
 
     useEffect(() => {
       setCards(gamedata.generateCardArray());
     }, []);
 
     useEffect(() => {
-      if (firstCardOpen !== null 
-        && secondCardOpen !== null 
-        && firstCardOpen.id !== secondCardOpen.id) {          
+      if (firstCardOpen !== null) {          
           checkGameStep();               
-        }
+      } else {
+        clearTimeout(timer);
+        clearTimeout(timerPair);
+      }
     }, [firstCardOpen, secondCardOpen]);
 
     useEffect(() => {
@@ -41,24 +43,32 @@ const useStyles = makeStyles((theme) => ({
     }, [currentHideCard]);
 
     const shuffleCards = () => {
-      let newCards = cards.sort(() => Math.random() - 0.5);
-      setCards(newCards);
+      const shuffled = cards.sort(() => Math.random() - 0.5);
+      console.log(shuffled);
     }
 
     const startGame = useCallback(() => {
-      shuffleCards();
+      setSeconds(0);
+      setSteps([]);
+      setIntervalGame(null);   
+      shuffleCards();  
+      
       const interval = setInterval(() => {
         setSeconds(seconds => seconds + 1);
       }, 1000);
-      return () => clearInterval(interval);     
-    }, []);
+      setIntervalGame(interval);      
+    }, [seconds, intervalGame, steps, cards]);
 
     const swipeCard = useCallback((card) => {
+      clearTimeout(timer);
+      clearTimeout(timerPair);
       if (firstCardOpen !== null) {
-        if (firstCardOpen.id !== card.id) {
-          setSecondCardOpen(card);
-        } else {
-          closeCardPair();
+        if (secondCardOpen === null) {
+          if (firstCardOpen.id !== card.id) {
+            setSecondCardOpen(card);
+          } else {
+            setFirstCardOpen(null);
+          }
         }
       } else {
         setFirstCardOpen(card);
@@ -67,7 +77,9 @@ const useStyles = makeStyles((theme) => ({
     },[firstCardOpen, secondCardOpen]);
 
     const checkGameStep = () => {    
-      if (firstCardOpen.iconId === secondCardOpen.iconId) {
+      if (firstCardOpen !== null && secondCardOpen !== null &&
+          firstCardOpen.id !== secondCardOpen.id && 
+          firstCardOpen.iconId === secondCardOpen.iconId) {
           createStepLog(firstCardOpen.id, secondCardOpen.id, true);
           let newCards = cards;
           newCards.map(c => {
@@ -78,21 +90,24 @@ const useStyles = makeStyles((theme) => ({
           });
           setCards(newCards); 
           closeCardPair();                     
+      } else if (firstCardOpen !== null && secondCardOpen === null) { 
+        let t = setTimeout(() => {
+          setFirstCardOpen(null);
+        }, 5000);
+        setTimer(t);  
       } else {
         createStepLog(firstCardOpen.id, secondCardOpen.id, false);   
-        let timer = setTimeout(() => {
-          closeCardPair();  
-        }, 5000);   
-        return () => {
-          clearTimeout(timer)
-        }                   
-      }               
+        closeCardPair();                
+      }            
     }
 
-    const closeCardPair = () => {
+    const closeCardPair = () => {      
+      let t = setTimeout(() => {
         setFirstCardOpen(null);
-        setSecondCardOpen(null);      
-    }
+        setSecondCardOpen(null);  
+      }, 1000);
+      setTimerPair(t);
+    };
 
     const createStepLog = (firstId, secondId, success) => {
       let newStep = {
@@ -110,7 +125,8 @@ const useStyles = makeStyles((theme) => ({
       if (cards.length > 0 && !gameOver && steps.length > 0) {          
         let res = cards.findIndex(c => c.visible === true);
         if (res === -1) {
-          setGameOver(true); 
+          setGameOver(true);
+          clearInterval(intervalGame);
         }
       }
     }
@@ -119,36 +135,19 @@ const useStyles = makeStyles((theme) => ({
       <div className={classes.root}>
         <Grid container justify="center" spacing={2}>
         <Grid item xs={4}>
-        <Button onClick={startGame} variant="contained" color="secondary">
-          СТАРТ
-        </Button>
-        <Typography component="h2" variant="caption" color="secondary">
-          ПРОШЛО {seconds} СЕКУНД
-        </Typography>
-
-          <Typography component="h2" variant="h5">Ход игры</Typography>
-          {steps.map(step => <Typography key={`card-item-${step.id}`} 
-                              variant="caption" display="block" 
-                              style={{color: step.success ? '#4caf50' : '#dc004e'}}>
-                Шаг {step.id}. Карточки ({step.firstCard},{step.secondCard})
-            </Typography>)}
+          <LeftControlPanel steps={steps} 
+                            seconds={seconds}
+                            startDisabled={intervalGame !== null}
+                            onStartGame={startGame}/>
         </Grid>
-        <Grid item xs={8} container justify="center" spacing={2}>
-            {!gameOver ? 
-                cards.map(cardItem => 
-                    <Grid key={`card-item-${cardItem.id}`} item xs={2}>
-                      {cardItem.visible ?
-                        <Card open={cardItem.id === firstCardOpen?.id || cardItem.id === secondCardOpen?.id} 
-                              iconId={cardItem.iconId}
-                              onCardClick={() => swipeCard(cardItem)}/>
-                              : <EmptyCell/>
-                      }
-                    </Grid>)
-                :
-                <div>
-                  <h2>GAME OVER!</h2>
-                  Примите наши поздравления! Вы справились за <strong>{steps.length}</strong> шагов!
-                </div>
+        <Grid item xs={8}>
+            {!gameOver 
+                ? <CardGrid cards={cards}
+                          started={intervalGame !== null}
+                          firstCardOpenId={firstCardOpen?.id}
+                          secondCardOpenId={secondCardOpen?.id}
+                          onCardClick={swipeCard}/>
+                : <Congradulations secondsLeft={seconds} stepCount={steps.length}/>
             }
         </Grid>
         </Grid>
